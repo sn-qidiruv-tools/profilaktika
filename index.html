@@ -546,6 +546,23 @@ body{
 
 <div class="toast" id="toast"></div>
 
+<!-- ============ BEKOR QILISH MODAL (faqat admin) ============ -->
+<div class="overlay" id="bekorOverlay">
+  <div class="modal">
+    <h2>Profilaktikani bekor qilish</h2>
+    <p class="sub">Qurilma qayta o'z ro'yxatiga qaytadi, Telegram'ga xabar boradi</p>
+    <div class="modal-device" id="bekorDeviceInfo"></div>
+    <div class="field">
+      <label>Sabab</label>
+      <input type="text" id="bekorSabab" placeholder="Masalan: xato belgilangan edi">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="bekorCancel">Yopish</button>
+      <button class="action-btn" id="bekorConfirm" style="background:var(--danger);color:#2A0A12">Bekor qilish</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============ CONFIG ============
 // DIQQAT: CSV ("Publish to web") havolalari Google tomonidan keshlanadi
@@ -882,6 +899,10 @@ doneSearchClear.addEventListener('click', ()=>{
   handleDoneSearch('');
 });
 
+function isAdminUser(){
+  return !!(currentUser && normalize(currentUser.login) === 'BEST');
+}
+
 function handleDoneSearch(query){
   const q = normalize(query);
   let list = devicesDone.slice().sort((a,b)=> (b._sortKey||0) - (a._sortKey||0));
@@ -892,6 +913,7 @@ function handleDoneSearch(query){
     doneResultsArea.innerHTML = `<div class="dash-empty">${q ? "Topilmadi" : "Hali bajarilgan qurilma yo'q"}</div>`;
     return;
   }
+  const admin = isAdminUser();
   doneResultsArea.innerHTML = list.slice(0,200).map(d => `
     <div class="result-card">
       <div class="result-main">
@@ -899,8 +921,72 @@ function handleDoneSearch(query){
         <div class="result-sub">${escapeHtml(d.OLT||'')} &nbsp;·&nbsp; ${escapeHtml(d.MANZIL||'')} &nbsp;·&nbsp; ${d._tuman==='buxoro'?'Buxoro':'Kogon'}</div>
       </div>
       <div class="status-done"><span class="ic">✅</span><div><b>Profilaktika bajarilgan</b><span>${escapeHtml((d.Sana||'') + ', ' + (d.Xodim||''))}</span></div></div>
+      ${admin ? `<button class="btn btn-secondary" style="margin-top:10px;color:var(--danger);border-color:#5A2632" onclick="openBekorModal('${encodeURIComponent(d.SERIA)}')">↩️ Bekor qilish</button>` : ''}
     </div>`).join('');
 }
+
+// ============ ADMIN: BEKOR QILISH ============
+let bekorSeria = null;
+const bekorOverlay = document.getElementById('bekorOverlay');
+const bekorConfirmBtn = document.getElementById('bekorConfirm');
+
+function openBekorModal(seriaEnc){
+  bekorSeria = decodeURIComponent(seriaEnc);
+  const d = devicesDone.find(x => x.SERIA === bekorSeria);
+  document.getElementById('bekorDeviceInfo').innerHTML = d
+    ? `S/N: <b>${escapeHtml(d.SERIA)}</b> &nbsp;·&nbsp; ${escapeHtml(d.OLT||'')}<br>${escapeHtml(d.MANZIL||'')} · ${escapeHtml(d.Xodim||'')} (${escapeHtml(d.Sana||'')})`
+    : '';
+  document.getElementById('bekorSabab').value = '';
+  bekorOverlay.classList.add('show');
+}
+window.openBekorModal = openBekorModal;
+document.getElementById('bekorCancel').addEventListener('click', ()=> bekorOverlay.classList.remove('show'));
+bekorOverlay.addEventListener('click', (e)=>{ if(e.target===bekorOverlay) bekorOverlay.classList.remove('show'); });
+
+// ==== "Bekor qilish" — OPTIMISTIK: qurilma darhol arxivdan chiqib, o'z ro'yxatiga qaytadi ====
+bekorConfirmBtn.addEventListener('click', ()=>{
+  const sabab = document.getElementById('bekorSabab').value.trim();
+  if(!sabab){ toast('Sababni kiriting', 'error'); return; }
+  const seria = bekorSeria;
+  bekorOverlay.classList.remove('show');
+
+  const idx = devicesDone.findIndex(d => d.SERIA === seria);
+  const removed = idx > -1 ? devicesDone.splice(idx, 1)[0] : null;
+  if(removed){
+    const restored = {
+      OLT: removed.OLT, PORT: removed.PORT, MANZIL: removed.MANZIL, LOKATSIYA: removed.LOKATSIYA,
+      SERIA: removed.SERIA, MARKASI: removed.MARKASI, "bo'sh port": removed["bo'sh port"],
+      _tuman: removed._tuman
+    };
+    if(removed._tuman === 'buxoro') devicesBuxoro.push(restored);
+    else if(removed._tuman === 'kogon') devicesKogon.push(restored);
+    topDoneCount.textContent = devicesDone.length;
+  }
+  toast("Bekor qilindi, yuborilmoqda...", 'success');
+  handleDoneSearch(doneSearchInput.value.trim());
+
+  const payload = {
+    action: 'bekor_qilish',
+    seria: seria,
+    sabab: sabab,
+    admin_ism: currentUser ? currentUser.ism : ''
+  };
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify(payload)
+  }).then(()=>{
+    loadDevices().then(()=>{
+      if(panelDone.style.display !== 'none') handleDoneSearch(doneSearchInput.value.trim());
+      if(tabOlt.classList.contains('active')) handleOltFilter();
+      else if(tabDashboard.classList.contains('active')) renderDashboard();
+      else if(tabSeria.classList.contains('active')) handleSearch(searchInput.value.trim());
+    });
+  }).catch(()=>{
+    toast("Bekor qilishda tarmoq xatoligi (" + seria + "). Internetni tekshiring.", 'error');
+  });
+});
 
 // ============ OLT / PORT SEARCH ============
 const tumanToggle = document.getElementById('tumanToggle');
@@ -1189,32 +1275,14 @@ function getHolat(d){ return d._done ? true : false; }
 function isDoneDevice(d){ return !!d._done; }
 
 let dashTumanFilter = 'all'; // 'all' | 'buxoro' | 'kogon'
-let empDateFrom = '';        // 'YYYY-MM-DD' (HTML date input formati)
-let empDateTo = '';
+// Sana filtri endi ORALIQ (dan/gacha) emas — Sheets'da SANA ustuniga
+// aynan qanday yozilgan bo'lsa (masalan "10.10.2026" yoki "10/10/2026"),
+// o'sha matnga ANIQ mos kelgan yozuvlarnigina ko'rsatadi. Hech qanday
+// sana formatiga o'girish/o'qishga urinilmaydi — chunki manba (Sheets)
+// da qanday format ishlatilgan bo'lsa, filtr ham xuddi shu ko'rinishda
+// ishlashi kerak.
+let empSanaFilter = '';      // '' = barcha sanalar, aks holda aniq matn
 let empNameFilter = '';      // '' = barcha xodimlar
-
-// "DD.MM.YYYY" -> Date obyekti
-function parseUzDate(s){
-  const parts = (s||'').toString().trim().split('.');
-  if(parts.length !== 3) return null;
-  const [d,m,y] = parts.map(Number);
-  if(!d || !m || !y) return null;
-  return new Date(y, m-1, d);
-}
-
-// "YYYY-MM-DD" (HTML date input qiymati) -> Date obyekti, MAHALLIY vaqt
-// bilan. DIQQAT: `new Date("2026-08-14")` kabi ISO satrni to'g'ridan-to'g'ri
-// berish brauzerda UTC deb o'qiladi — bu esa O'zbekiston vaqt zonasida
-// (UTC+5) bir necha soatlik farq berib, "bugun" filtri ishlamay qolishiga
-// sabab bo'lgan. Shu sabab qismlarga bo'lib, mahalliy vaqt sifatida
-// qo'lda quramiz.
-function parseIsoLocal(s){
-  const parts = (s||'').toString().trim().split('-');
-  if(parts.length !== 3) return null;
-  const [y,m,d] = parts.map(Number);
-  if(!y || !m || !d) return null;
-  return new Date(y, m-1, d);
-}
 
 function renderDashboard(){
   const dashContent = document.getElementById('dashContent');
@@ -1269,13 +1337,9 @@ function renderDashboard(){
   const allEmployees = [...new Set(doneAll.map(d=>(d.Xodim||'').toString().trim()).filter(Boolean))].sort();
 
   let filteredDone = doneAll;
-  if(empDateFrom){
-    const from = parseIsoLocal(empDateFrom);
-    filteredDone = filteredDone.filter(d=>{ const dt = parseUzDate(d.Sana); return dt && from && dt.getTime() >= from.getTime(); });
-  }
-  if(empDateTo){
-    const to = parseIsoLocal(empDateTo);
-    filteredDone = filteredDone.filter(d=>{ const dt = parseUzDate(d.Sana); return dt && to && dt.getTime() <= to.getTime(); });
+  if(empSanaFilter){
+    // Aynan Sheets'dagi Sana ustunida yozilgan matn bilan ANIQ (harfma-harf) mos kelishi kerak.
+    filteredDone = filteredDone.filter(d => (d.Sana||'').toString().trim() === empSanaFilter);
   }
   if(empNameFilter){
     filteredDone = filteredDone.filter(d=>(d.Xodim||'').toString().trim() === empNameFilter);
@@ -1292,31 +1356,30 @@ function renderDashboard(){
   });
   const employeeList = [...byEmployee.entries()].sort((a,b)=>b[1].total-a[1].total);
   const maxEmployeeCount = employeeList.length ? Math.max(...employeeList.map(e=>e[1].total)) : 1;
-  const filterActive = !!(empDateFrom || empDateTo || empNameFilter);
+  const filterActive = !!(empSanaFilter || empNameFilter);
 
   html += `
   <div class="dash-section">
     <div class="dash-title">👷 Xodimlar kesimida</div>
     <div class="dash-card" style="margin-bottom:10px">
-      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-        <div style="display:flex;flex-direction:column;gap:3px">
-          <label style="font-size:10.5px;color:var(--text-dim)">Dan</label>
-          <input type="date" id="empFromInput" value="${empDateFrom}" style="background:var(--bg-elev-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:12px">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+        <div style="position:relative;flex:1;min-width:160px">
+          <label style="font-size:10.5px;color:var(--text-dim);display:block;margin-bottom:3px">Sana</label>
+          <input type="text" id="empSanaSearchInput" placeholder="Sana qidirish yoki ro'yxatdan tanlash..." autocomplete="off"
+            style="background:var(--bg-elev-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:12.5px;width:100%">
+          <div id="empSanaDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:20;background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto;margin-top:4px;box-shadow:var(--shadow)"></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:3px">
-          <label style="font-size:10.5px;color:var(--text-dim)">Gacha</label>
-          <input type="date" id="empToInput" value="${empDateTo}" style="background:var(--bg-elev-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:12px">
-        </div>
-        <button type="button" id="empTodayBtn" style="align-self:flex-end;background:var(--bg-elev-2);border:1px solid var(--border);border-radius:8px;padding:6.5px 10px;font-size:12px;color:var(--accent);cursor:pointer;font-weight:700">Bugun</button>
-        <button type="button" id="empClearBtn" style="align-self:flex-end;background:transparent;border:none;font-size:12px;color:var(--text-dim);cursor:pointer;text-decoration:underline">Tozalash</button>
+        <button type="button" id="empTodayBtn" style="background:var(--bg-elev-2);border:1px solid var(--border);border-radius:8px;padding:7.5px 10px;font-size:12px;color:var(--accent);cursor:pointer;font-weight:700">Bugun</button>
+        <button type="button" id="empClearBtn" style="background:transparent;border:none;font-size:12px;color:var(--text-dim);cursor:pointer;text-decoration:underline;padding:7.5px 0">Tozalash</button>
         <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:140px">
           <label style="font-size:10.5px;color:var(--text-dim)">Xodim</label>
-          <select id="empNameSelect" style="background:var(--bg-elev-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:12px;width:100%">
+          <select id="empNameSelect" style="background:var(--bg-elev-2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:12.5px;width:100%">
             <option value="">Barcha xodimlar</option>
             ${allEmployees.map(n=>`<option value="${escapeHtml(n)}" ${n===empNameFilter?'selected':''}>${escapeHtml(n)}</option>`).join('')}
           </select>
         </div>
       </div>
+      ${empSanaFilter ? `<div class="tag" style="margin-top:10px;background:#123626;color:var(--accent);display:inline-flex;align-items:center;gap:6px">📅 ${escapeHtml(empSanaFilter)} <span id="empSanaClearChip" style="cursor:pointer;font-weight:800">✕</span></div>` : ''}
     </div>
     <div class="dash-card">
       ${employeeList.length ? employeeList.map(([ism, rec])=>`
@@ -1333,23 +1396,64 @@ function renderDashboard(){
   dashContent.innerHTML = html;
   wireDashTumanTabs();
 
-  const fromInput = document.getElementById('empFromInput');
-  const toInput = document.getElementById('empToInput');
+  const sanaSearchInput = document.getElementById('empSanaSearchInput');
+  const sanaDropdown = document.getElementById('empSanaDropdown');
   const nameSelect = document.getElementById('empNameSelect');
   const todayBtn = document.getElementById('empTodayBtn');
   const clearBtn = document.getElementById('empClearBtn');
+  const sanaClearChip = document.getElementById('empSanaClearChip');
 
-  fromInput.addEventListener('change', ()=>{ empDateFrom = fromInput.value; renderDashboard(); });
-  toInput.addEventListener('change', ()=>{ empDateTo = toInput.value; renderDashboard(); });
+  // Sheets'dagi Sana ustunida qanday matn yozilgan bo'lsa — o'sha holicha,
+  // eng so'nggi qo'shilganlar yuqorida bo'ladigan tartibda, TAKRORLANMAS
+  // ro'yxat — xuddi Excel filtrida "qiymatlar ro'yxati"dagidek.
+  const uniqueSanaList = [];
+  const seenSana = new Set();
+  doneAll.slice().sort((a,b)=>(b._sortKey||0)-(a._sortKey||0)).forEach(dd=>{
+    const s = (dd.Sana||'').toString().trim();
+    if(s && !seenSana.has(s)){ seenSana.add(s); uniqueSanaList.push(s); }
+  });
+
+  function renderSanaDropdown(query){
+    const q = query.trim().toLowerCase();
+    const matches = q ? uniqueSanaList.filter(s=>s.toLowerCase().includes(q)) : uniqueSanaList;
+    if(matches.length === 0){
+      sanaDropdown.innerHTML = `<div style="padding:10px 12px;font-size:12.5px;color:var(--text-dim)">Topilmadi</div>`;
+    } else {
+      sanaDropdown.innerHTML = matches.slice(0,50).map(s=>
+        `<div class="sana-opt" data-val="${escapeHtml(s)}" style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border)">${escapeHtml(s)}</div>`
+      ).join('');
+    }
+    sanaDropdown.style.display = 'block';
+  }
+
+  sanaSearchInput.addEventListener('focus', ()=> renderSanaDropdown(sanaSearchInput.value));
+  sanaSearchInput.addEventListener('input', ()=> renderSanaDropdown(sanaSearchInput.value));
+  sanaSearchInput.addEventListener('blur', ()=>{ setTimeout(()=>{ sanaDropdown.style.display='none'; }, 150); });
+  // 'mousedown' ishlatiladi, chunki 'click' dan OLDIN inputning 'blur'
+  // hodisasi ishga tushib, dropdown yashirinib ulguradi — shu sababli
+  // odatiy 'click' ishlatilsa, tanlash ishlamay qolishi mumkin edi.
+  sanaDropdown.addEventListener('mousedown', (e)=>{
+    const opt = e.target.closest('.sana-opt');
+    if(!opt) return;
+    empSanaFilter = opt.dataset.val;
+    renderDashboard();
+  });
+
+  if(sanaClearChip){
+    sanaClearChip.addEventListener('click', ()=>{ empSanaFilter=''; renderDashboard(); });
+  }
+
   nameSelect.addEventListener('change', ()=>{ empNameFilter = nameSelect.value; renderDashboard(); });
   todayBtn.addEventListener('click', ()=>{
+    // "Bugun" — saytda profilaktika belgilanganda ishlatiladigan XUDDI
+    // O'SHA formatda ('uz-UZ' locale) hisoblab, aynan shu matn bilan
+    // filtrlaydi (parsing/solishtirish emas — oddiy matn tengligi).
     const today = new Date();
-    const iso = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
-    empDateFrom = iso; empDateTo = iso;
+    empSanaFilter = today.toLocaleDateString('uz-UZ', {day:'2-digit', month:'2-digit', year:'numeric'});
     renderDashboard();
   });
   clearBtn.addEventListener('click', ()=>{
-    empDateFrom = ''; empDateTo = ''; empNameFilter = '';
+    empSanaFilter = ''; empNameFilter = '';
     renderDashboard();
   });
 }
