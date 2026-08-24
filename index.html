@@ -573,6 +573,11 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRmso_f_ze_FSD
 const DEVICES_URL   = APPS_SCRIPT_URL + "?action=devices";
 const EMPLOYEES_URL = APPS_SCRIPT_URL + "?action=employees";
 const COMPLETED_URL = APPS_SCRIPT_URL + "?action=completed";
+// TEZLASHTIRISH: yuqoridagi uchta endpoint o'rniga endi BITTA so'rov
+// (bootstrap) ishlatiladi — u xodimlar, qurilmalar va arxivni birga
+// qaytaradi. Bu sahifa ochilish tezligini sezilarli oshiradi, chunki
+// har bir alohida so'rovning o'z tarmoq/kutish vaqti bor edi.
+const BOOTSTRAP_URL = APPS_SCRIPT_URL + "?action=bootstrap";
 
 // ============ STATE ============
 let employees = [];
@@ -663,14 +668,14 @@ function enterApp(){
 // Sayt ochilishi bilanoq — LOGIN ekrani ko'rinishidan OLDIN — barcha kerakli
 // ma'lumotlar (xodimlar, qurilmalar, arxiv) to'liq yuklab olinadi. Shu
 // tufayli xodim tizimga kirgach hech qanday kutishsiz, darhol ishlay oladi.
+// TEZLASHTIRISH: avval bu yerda employees VA loadDevices() (o'zi ham 2 ta
+// ketma-ket so'rov qilardi) parallel chaqirilardi — jami 3 ta alohida
+// tarmoq so'rovi. Endi loadDevices() ichida BITTA bootstrap so'rovi orqali
+// hammasi birga keladi, shu sabab bu yerda alohida employees so'rovi shart
+// emas.
 async function initApp(){
   try{
-    await Promise.all([
-      (async()=>{
-        try{ employees = await fetchJson(EMPLOYEES_URL); }catch(e){}
-      })(),
-      loadDevices()
-    ]);
+    await loadDevices();
   }catch(e){
     // Xatolik bo'lsa ham foydalanuvchini kirishdan to'xtatmaymiz —
     // login/qidiruv paytida qayta urinib ko'radi.
@@ -721,21 +726,21 @@ document.getElementById('topRefreshBtn').addEventListener('click', async (e)=>{
 // ko'chiriladi (backend/Apps Script tomonda) — shu sabab keshlanish yoki
 // "vaqtincha eslab qolish" (override) kabi hiyla-nayranglarga umuman
 // hojat qolmadi: manba (Apps Script JSON) doim jonli holatni beradi.
-
+//
+// TEZLASHTIRISH: avval bu yerda 2 ta ALOHIDA so'rov (devices, keyin
+// completed) ketma-ket (await) chaqirilardi. Endi BITTA "bootstrap"
+// so'rovi orqali uchalasi (qurilmalar, arxiv, xodimlar) birga keladi —
+// tarmoq so'rovlari soni 2-3 martadan 1 taga tushadi.
 async function loadDevices(){
   try{
-    const data = await fetchJson(DEVICES_URL);
+    const data = await fetchJson(BOOTSTRAP_URL);
     devicesBuxoro = (data.buxoro || []).map(r => ({...r, _tuman:'buxoro'}));
     devicesKogon = (data.kogon || []).map(r => ({...r, _tuman:'kogon'}));
-  }catch(err){
-    toast("Qurilmalar ro'yxatini yuklab bo'lmadi", 'error');
-  }
-  try{
-    const done = await fetchJson(COMPLETED_URL);
-    devicesDone = (done || []).map((r,i) => ({...r, _tuman: (r.Tuman||'').toString().trim(), _done:true, _sortKey:i}));
+    devicesDone = (data.completed || []).map((r,i) => ({...r, _tuman: (r.Tuman||'').toString().trim(), _done:true, _sortKey:i}));
     topDoneCount.textContent = devicesDone.length;
+    if(data.employees && data.employees.length) employees = data.employees;
   }catch(err){
-    // Bajarilganlar ro'yxatini olishda xatolik bo'lsa ham asosiy qidiruv ishlashda davom etadi
+    toast("Ma'lumotlarni yuklab bo'lmadi", 'error');
   }
 }
 
