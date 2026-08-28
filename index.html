@@ -124,6 +124,38 @@ body{
 }
 .mode-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
 
+/* ===== Hero kartochka (Asosiy bo'lim yuqorisida) ===== */
+.hero-card{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  border-radius:20px;padding:18px;margin-bottom:16px;
+  box-shadow:0 10px 24px rgba(108,92,231,0.28);
+}
+.hero-lbl{font-size:11px;color:rgba(255,255,255,0.75);margin:0 0 6px}
+.hero-row{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.hero-pct{font-size:32px;font-weight:700;color:#fff;letter-spacing:-0.02em}
+.hero-frac{font-size:12px;color:rgba(255,255,255,0.75)}
+.hero-track{height:7px;border-radius:4px;background:rgba(255,255,255,0.25)}
+.hero-fill{height:100%;border-radius:4px;background:#fff;transition:width .4s ease}
+
+/* ===== Suzuvchi pastki navigatsiya ===== */
+.bottom-nav-wrap{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:6px;
+  background:#1A1A2E;border-radius:100px;padding:10px 14px;
+  box-shadow:0 12px 28px rgba(26,26,46,0.35);z-index:45;
+}
+.bnav-btn{
+  position:relative;width:44px;height:44px;border-radius:50%;border:none;
+  background:transparent;color:#6E6E88;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.15s;
+}
+.bnav-btn.active{color:#fff;background:rgba(255,255,255,0.12)}
+.bnav-badge{
+  position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;
+  border-radius:100px;background:var(--accent-2);color:#1A1A2E;font-size:9px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+}
+
 .select-wrap{position:relative;margin-bottom:12px}
 .select-wrap select{
   width:100%;padding:14px 40px 14px 14px;border-radius:12px;
@@ -501,59 +533,69 @@ body{
         </div>
         <div id="notifList"></div>
       </div>
-      <div class="user-chip" id="profileBtn" style="cursor:pointer">
+      <div class="user-chip">
         <div class="user-avatar" id="userAvatar">?</div>
         <span id="userName">—</span>
       </div>
     </div>
   </div>
 
-  <div class="mode-tabs">
-    <button class="mode-tab active" id="tabSeria">🔢 SERIA</button>
-    <button class="mode-tab" id="tabOlt">📡 OLT / Port</button>
-    <button class="mode-tab" id="tabDone">✅ Bajarilgan<span id="topDoneCount" style="margin-left:4px;opacity:.75"></span></button>
-    <button class="mode-tab" id="tabDashboard">📊 Statistika</button>
-  </div>
+  <!-- ============ ASOSIY BO'LIM (pastki navigatsiyaning "Uy" tugmasi) ============ -->
+  <div id="sectionAsosiy">
+    <div class="hero-card">
+      <p class="hero-lbl">Umumiy bajarilish</p>
+      <div class="hero-row">
+        <span class="hero-pct" id="heroPercent">0%</span>
+        <span class="hero-frac" id="heroFraction">0 / 0 ta</span>
+      </div>
+      <div class="hero-track"><div class="hero-fill" id="heroFill" style="width:0%"></div></div>
+    </div>
 
-  <!-- SERIA qidiruv paneli -->
-  <div id="panelSeria">
-    <div class="search-box">
-      <span class="search-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      </span>
-      <input type="text" id="searchInput" placeholder="Oxirgi 4-5 ta raqamni kiriting..." autocomplete="off">
-      <button class="search-clear" id="searchClear">✕</button>
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabSeria">🔢 SERIA</button>
+      <button class="mode-tab" id="tabOlt">📡 OLT / Port</button>
     </div>
-    <div class="hint" id="hintText">Kamida oxirgi 4 ta belgini kiriting</div>
-  </div>
 
-  <!-- OLT/Port qidiruv paneli -->
-  <div id="panelOlt" style="display:none">
-    <div class="tuman-toggle" id="tumanToggle">
-      <button class="tuman-btn" data-tuman="buxoro"><span class="dot"></span>Buxoro tuman</button>
-      <button class="tuman-btn" data-tuman="kogon"><span class="dot"></span>Kogon tuman</button>
+    <!-- SERIA qidiruv paneli -->
+    <div id="panelSeria">
+      <div class="search-box">
+        <span class="search-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+        <input type="text" id="searchInput" placeholder="Oxirgi 4-5 ta raqamni kiriting..." autocomplete="off">
+        <button class="search-clear" id="searchClear">✕</button>
+      </div>
+      <div class="hint" id="hintText">Kamida oxirgi 4 ta belgini kiriting</div>
     </div>
-    <div class="olt-list-wrap" id="oltListWrap" style="display:none">
-      <div class="olt-list" id="oltList"></div>
-    </div>
-    <div class="selected-olt-bar" id="selectedOltBar" style="display:none">
-      <button type="button" class="olt-back-btn" id="oltBackBtn">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-        Orqaga
-      </button>
-      <div class="selected-olt-name" id="selectedOltName"></div>
-    </div>
-    <div class="search-box" id="portSearchBox" style="display:none">
-      <span class="search-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      </span>
-      <input type="text" id="portInput" placeholder="Port bo'yicha filtrlash (ixtiyoriy)..." autocomplete="off">
-      <button class="search-clear" id="portClear">✕</button>
-    </div>
-    <div class="olt-count" id="oltCount"></div>
-  </div>
 
-  <div id="resultsArea"></div>
+    <!-- OLT/Port qidiruv paneli -->
+    <div id="panelOlt" style="display:none">
+      <div class="tuman-toggle" id="tumanToggle">
+        <button class="tuman-btn" data-tuman="buxoro"><span class="dot"></span>Buxoro tuman</button>
+        <button class="tuman-btn" data-tuman="kogon"><span class="dot"></span>Kogon tuman</button>
+      </div>
+      <div class="olt-list-wrap" id="oltListWrap" style="display:none">
+        <div class="olt-list" id="oltList"></div>
+      </div>
+      <div class="selected-olt-bar" id="selectedOltBar" style="display:none">
+        <button type="button" class="olt-back-btn" id="oltBackBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          Orqaga
+        </button>
+        <div class="selected-olt-name" id="selectedOltName"></div>
+      </div>
+      <div class="search-box" id="portSearchBox" style="display:none">
+        <span class="search-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+        <input type="text" id="portInput" placeholder="Port bo'yicha filtrlash (ixtiyoriy)..." autocomplete="off">
+        <button class="search-clear" id="portClear">✕</button>
+      </div>
+      <div class="olt-count" id="oltCount"></div>
+    </div>
+
+    <div id="resultsArea"></div>
+  </div>
 
   <!-- BAJARILGAN paneli (faqat ko'rish, hech qanday tugma yo'q) -->
   <div id="panelDone" style="display:none">
@@ -594,10 +636,22 @@ body{
   </div>
 </div>
 
-<!-- FAB — tezkor "SERIA" qidiruviga o'tish -->
-<button id="fabQuick" title="Tezkor belgilash" style="position:fixed;right:20px;bottom:26px;width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 10px 26px rgba(108,92,231,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:40">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg>
-</button>
+<!-- ============ SUZUVCHI PASTKI NAVIGATSIYA ============ -->
+<div class="bottom-nav-wrap" id="bottomNavWrap">
+  <button class="bnav-btn active" id="navAsosiy" title="Asosiy">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+  </button>
+  <button class="bnav-btn" id="navDone" title="Bajarilganlar">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    <span class="bnav-badge" id="navDoneBadge" style="display:none">0</span>
+  </button>
+  <button class="bnav-btn" id="navStats" title="Statistika">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+  </button>
+  <button class="bnav-btn" id="navProfile" title="Profil">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+  </button>
+</div>
 
 <!-- ============ PROFILAKTIKA MODAL ============ -->
 <div class="overlay" id="modalOverlay">
@@ -797,10 +851,17 @@ document.getElementById('topRefreshBtn').addEventListener('click', async (e)=>{
   await loadDevices();
   setTimeout(()=>{ btn.style.transition='none'; btn.style.transform='rotate(0deg)'; }, 600);
   toast("Ma'lumotlar yangilandi", 'success');
-  if(tabOlt.classList.contains('active')) handleOltFilter();
-  else if(tabDashboard.classList.contains('active')) renderDashboard();
-  else handleSearch(searchInput.value.trim());
+  refreshActiveView();
 });
+
+// Joriy ochiq bo'lgan bo'lim/tab holatiga qarab tegishli ro'yxatni qayta chizadi.
+function refreshActiveView(){
+  if(navStats.classList.contains('active')) renderDashboard();
+  else if(navDone.classList.contains('active')) handleDoneSearch(doneSearchInput.value.trim());
+  else if(navProfile.classList.contains('active')){ /* profil statik, yangilash shart emas */ }
+  else if(tabOlt.classList.contains('active')) handleOltFilter();
+  else handleSearch(searchInput.value.trim());
+}
 
 // ============ LOAD DEVICES ============
 // Endi "bajarilgan" qurilmalar 1/2-listdan butunlay o'chirilib, arxivga
@@ -818,7 +879,7 @@ async function loadDevices(){
     devicesBuxoro = (data.buxoro || []).map(r => ({...r, _tuman:'buxoro'}));
     devicesKogon = (data.kogon || []).map(r => ({...r, _tuman:'kogon'}));
     devicesDone = (data.completed || []).map((r,i) => ({...r, _tuman: (r.Tuman||'').toString().trim(), _done:true, _sortKey:i}));
-    topDoneCount.textContent = devicesDone.length;
+    updateHero();
     if(data.employees && data.employees.length) employees = data.employees;
   }catch(err){
     toast("Ma'lumotlarni yuklab bo'lmadi", 'error');
@@ -1023,12 +1084,10 @@ function renderResults(matches){
   }).join('');
 }
 
-// ============ MODE TABS ============
+// ============ NAVIGATSIYA: pastki panel (bo'lim) + ichki SERIA/OLT tab'lar ============
 const tabSeria = document.getElementById('tabSeria');
 const tabOlt = document.getElementById('tabOlt');
-const tabDone = document.getElementById('tabDone');
-const tabDashboard = document.getElementById('tabDashboard');
-const topDoneCount = document.getElementById('topDoneCount');
+const sectionAsosiy = document.getElementById('sectionAsosiy');
 const panelSeria = document.getElementById('panelSeria');
 const panelOlt = document.getElementById('panelOlt');
 const panelDone = document.getElementById('panelDone');
@@ -1036,47 +1095,80 @@ const panelDashboard = document.getElementById('panelDashboard');
 const panelProfile = document.getElementById('panelProfile');
 const resultsAreaEl = document.getElementById('resultsArea');
 
-function showPanel(panelToShow, tabToActivate){
-  [tabSeria, tabOlt, tabDone, tabDashboard].forEach(t=>t.classList.remove('active'));
-  [panelSeria, panelOlt, panelDone, panelDashboard, panelProfile].forEach(p=>p.style.display='none');
-  resultsAreaEl.style.display = (panelToShow===panelSeria || panelToShow===panelOlt) ? 'block' : 'none';
-  if(tabToActivate) tabToActivate.classList.add('active');
-  panelToShow.style.display='block';
+const navAsosiy = document.getElementById('navAsosiy');
+const navDone = document.getElementById('navDone');
+const navStats = document.getElementById('navStats');
+const navProfile = document.getElementById('navProfile');
+const navDoneBadge = document.getElementById('navDoneBadge');
+
+// Pastki navigatsiyaning qaysi bo'limi faol ekanini boshqaradi.
+function showSection(name){
+  sectionAsosiy.style.display = name === 'asosiy' ? 'block' : 'none';
+  panelDone.style.display = name === 'done' ? 'block' : 'none';
+  panelDashboard.style.display = name === 'dashboard' ? 'block' : 'none';
+  panelProfile.style.display = name === 'profile' ? 'block' : 'none';
+  [navAsosiy, navDone, navStats, navProfile].forEach(b => b.classList.remove('active'));
+  ({asosiy: navAsosiy, done: navDone, dashboard: navStats, profile: navProfile})[name].classList.add('active');
 }
 
+// "Asosiy" bo'lim ichida SERIA/OLT o'rtasidagi kichik toggle.
+function showInnerTab(panelToShow, tabToActivate){
+  [tabSeria, tabOlt].forEach(t => t.classList.remove('active'));
+  [panelSeria, panelOlt].forEach(p => p.style.display = 'none');
+  resultsAreaEl.style.display = 'block';
+  tabToActivate.classList.add('active');
+  panelToShow.style.display = 'block';
+}
+
+navAsosiy.addEventListener('click', ()=>{
+  showSection('asosiy');
+  handleSearch(searchInput.value.trim());
+});
+navDone.addEventListener('click', ()=>{
+  showSection('done');
+  handleDoneSearch(doneSearchInput.value.trim());
+});
+navStats.addEventListener('click', ()=>{
+  showSection('dashboard');
+  renderDashboard();
+});
+navProfile.addEventListener('click', ()=>{
+  showSection('profile');
+  document.getElementById('profileIsm').textContent = currentUser ? currentUser.ism : '—';
+  document.getElementById('profileLogin').textContent = currentUser ? currentUser.login : '—';
+  document.getElementById('profileAvatarBig').textContent = currentUser ? currentUser.ism.charAt(0).toUpperCase() : '?';
+});
+
 tabSeria.addEventListener('click', ()=>{
-  showPanel(panelSeria, tabSeria);
+  showInnerTab(panelSeria, tabSeria);
   resultsArea.innerHTML='';
   handleSearch(searchInput.value.trim());
 });
 tabOlt.addEventListener('click', ()=>{
-  showPanel(panelOlt, tabOlt);
+  showInnerTab(panelOlt, tabOlt);
   resultsArea.innerHTML='';
   hintText.style.display='none';
   renderTumanToggle();
   handleOltFilter();
 });
-tabDone.addEventListener('click', ()=>{
-  showPanel(panelDone, tabDone);
-  handleDoneSearch(doneSearchInput.value.trim());
-});
-tabDashboard.addEventListener('click', ()=>{
-  showPanel(panelDashboard, tabDashboard);
-  renderDashboard();
-});
 document.getElementById('dashRefresh').addEventListener('click', renderDashboard);
 
-// ============ PROFIL (ism/login, parol o'zgartirish, chiqish) ============
-document.getElementById('profileBtn').addEventListener('click', ()=>{
-  showPanel(panelProfile, null);
-  document.getElementById('profileIsm').textContent = currentUser ? currentUser.ism : '—';
-  document.getElementById('profileLogin').textContent = currentUser ? currentUser.login : '—';
-  document.getElementById('profileAvatarBig').textContent = currentUser ? currentUser.ism.charAt(0).toUpperCase() : '?';
-});
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   localStorage.removeItem('profilaktika_user');
   location.reload();
 });
+
+// ============ HERO KARTOCHKA (umumiy bajarilish foizi) ============
+function updateHero(){
+  const total = devicesBuxoro.length + devicesKogon.length + devicesDone.length;
+  const done = devicesDone.length;
+  const pct = total ? Math.round((done/total)*100) : 0;
+  document.getElementById('heroPercent').textContent = pct + '%';
+  document.getElementById('heroFraction').textContent = done + ' / ' + total + ' ta';
+  document.getElementById('heroFill').style.width = pct + '%';
+  if(done > 0){ navDoneBadge.style.display = 'flex'; navDoneBadge.textContent = done > 99 ? '99+' : done; }
+  else { navDoneBadge.style.display = 'none'; }
+}
 
 // ============ BAJARILGANLAR (faqat ko'rish) ============
 const doneSearchInput = document.getElementById('doneSearchInput');
@@ -1154,7 +1246,7 @@ bekorConfirmBtn.addEventListener('click', ()=>{
     };
     if(removed._tuman === 'buxoro') devicesBuxoro.push(restored);
     else if(removed._tuman === 'kogon') devicesKogon.push(restored);
-    topDoneCount.textContent = devicesDone.length;
+    updateHero();
   }
   toast("Bekor qilindi, yuborilmoqda...", 'success');
   handleDoneSearch(doneSearchInput.value.trim());
@@ -1173,9 +1265,7 @@ bekorConfirmBtn.addEventListener('click', ()=>{
   }).then(()=>{
     loadDevices().then(()=>{
       if(panelDone.style.display !== 'none') handleDoneSearch(doneSearchInput.value.trim());
-      if(tabOlt.classList.contains('active')) handleOltFilter();
-      else if(tabDashboard.classList.contains('active')) renderDashboard();
-      else if(tabSeria.classList.contains('active')) handleSearch(searchInput.value.trim());
+      refreshActiveView();
     });
   }).catch(()=>{
     toast("Bekor qilishda tarmoq xatoligi (" + seria + "). Internetni tekshiring.", 'error');
@@ -1421,7 +1511,7 @@ modalConfirm.addEventListener('click', ()=>{
   const idx = list.findIndex(d => d.SERIA === device.SERIA);
   if(idx > -1){ list.splice(idx, 1); }
   devicesDone.unshift({ ...device, Sana: sana, Xodim: ism, _done:true, _sortKey: Date.now() });
-  topDoneCount.textContent = devicesDone.length;
+  updateHero();
   handleSearch(searchInput.value.trim());
 
   // === FON REJIMIDA: serverga yuborish ===
@@ -1448,8 +1538,7 @@ modalConfirm.addEventListener('click', ()=>{
     // jumladan boshqa xodimlar tomonidan bajarilganlarni ham) olish
     // uchun ro'yxatni fondan qayta yuklaymiz.
     loadDevices().then(()=>{
-      if(tabOlt.classList.contains('active')) handleOltFilter();
-      else if(!tabDashboard.classList.contains('active')) handleSearch(searchInput.value.trim());
+      refreshActiveView();
     });
   }).catch(()=>{
     toast("Yuborishda tarmoq xatoligi yuz berdi (" + device.SERIA + "). Internetni tekshiring.", 'error');
