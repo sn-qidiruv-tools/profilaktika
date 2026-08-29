@@ -155,6 +155,7 @@ body{
   border-radius:100px;background:var(--accent-2);color:#1A1A2E;font-size:9px;font-weight:800;
   display:flex;align-items:center;justify-content:center;
 }
+.bnav-badge-danger{background:var(--danger);color:#fff}
 
 .select-wrap{position:relative;margin-bottom:12px}
 .select-wrap select{
@@ -437,28 +438,21 @@ body{
 }
 .dash-refresh:hover{color:var(--accent)}
 
-/* ===== Bildirishnoma dropdown ===== */
-.notif-dropdown{
-  position:absolute;top:46px;right:44px;width:290px;max-width:80vw;
-  background:var(--bg-elev);border:1px solid var(--border);border-radius:16px;
-  box-shadow:var(--shadow);display:none;z-index:60;max-height:360px;overflow-y:auto;
-}
-.notif-dropdown.show{display:block;animation:rise .18s}
-.notif-head{
+/* ===== Bildirishnomalar paneli ===== */
+.xabarlar-toolbar{
   display:flex;align-items:center;justify-content:space-between;
-  padding:12px 14px;border-bottom:1px solid var(--border);
-  font-size:12.5px;font-weight:700;
+  margin-bottom:14px;
 }
-.notif-head button{background:none;border:none;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer}
+#notifClearAll{background:none;border:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer}
 .notif-item{
-  padding:11px 14px;border-bottom:1px solid var(--border);
+  background:var(--bg-elev);border:1px solid var(--border);border-radius:14px;
+  padding:13px 14px;margin-bottom:10px;
   display:flex;gap:8px;align-items:flex-start;
 }
-.notif-item:last-child{border-bottom:none}
-.notif-item .txt{flex:1;font-size:12.5px;line-height:1.5}
-.notif-item .vaqt{font-size:10.5px;color:var(--text-dim);margin-top:3px}
-.notif-item .close-x{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;flex-shrink:0;padding:2px}
-.notif-empty{padding:26px 14px;text-align:center;color:var(--text-dim);font-size:12.5px}
+.notif-item .txt{flex:1;font-size:13px;line-height:1.5}
+.notif-item .vaqt{font-size:11px;color:var(--text-dim);margin-top:4px}
+.notif-item .close-x{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;flex-shrink:0;padding:2px}
+.notif-empty{text-align:center;padding:40px 14px;color:var(--text-dim);font-size:13px}
 
 /* ===== Profil paneli ===== */
 .profile-card{
@@ -473,9 +467,30 @@ body{
 }
 .profile-name{font-size:16px;font-weight:700;margin-bottom:4px}
 .profile-login{font-size:12.5px;color:var(--text-dim)}
-#panelProfile .profile-card:nth-child(2){text-align:left;padding:20px}
+.pw-toggle-row{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  background:none;border:none;padding:18px 20px;cursor:pointer;
+  color:var(--text);font-size:13.5px;font-weight:600;text-align:left;
+}
+.pw-toggle-row.open #pwToggleChevron{transform:rotate(90deg)}
+
+/* ===== Profil tanlov menyusi (topbar) ===== */
+.profile-menu{
+  position:absolute;top:56px;right:0;background:var(--bg-elev);
+  border:1px solid var(--border);border-radius:12px;padding:6px;
+  box-shadow:var(--shadow);display:none;z-index:60;min-width:150px;
+}
+.profile-menu.show{display:block;animation:rise .18s}
+.profile-menu button{
+  width:100%;text-align:left;padding:10px 12px;border-radius:8px;border:none;
+  background:transparent;color:var(--text);font-size:13px;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+}
+.profile-menu button:hover{background:var(--bg-elev-2)}
+#profileMenuLogout{color:var(--danger)}
 </style>
 </head>
+
 <body>
 
 <!-- ============ LOADING SCREEN ============ -->
@@ -522,20 +537,19 @@ body{
       <button id="topRefreshBtn" title="Ma'lumotlarni yangilash" style="background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);cursor:pointer">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
       </button>
-      <button id="bellBtn" title="Bildirishnomalar" style="position:relative;background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);cursor:pointer">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span id="bellBadge" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 3px;border-radius:100px;background:var(--danger);color:#fff;font-size:9.5px;font-weight:800;align-items:center;justify-content:center">0</span>
-      </button>
-      <div class="notif-dropdown" id="notifDropdown">
-        <div class="notif-head">
-          <span>Bildirishnomalar</span>
-          <button type="button" id="notifClearAll">Hammasini tozalash</button>
-        </div>
-        <div id="notifList"></div>
-      </div>
-      <div class="user-chip">
+      <div class="user-chip" id="profileChip" style="cursor:pointer">
         <div class="user-avatar" id="userAvatar">?</div>
         <span id="userName">—</span>
+      </div>
+      <div class="profile-menu" id="profileMenu">
+        <button type="button" id="profileMenuProfil">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+          Profil
+        </button>
+        <button type="button" id="profileMenuLogout">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Chiqish
+        </button>
       </div>
     </div>
   </div>
@@ -543,12 +557,11 @@ body{
   <!-- ============ ASOSIY BO'LIM (pastki navigatsiyaning "Uy" tugmasi) ============ -->
   <div id="sectionAsosiy">
     <div class="hero-card">
-      <p class="hero-lbl">Umumiy bajarilish</p>
+      <p class="hero-lbl">Bugun bajarilgan ishlar</p>
       <div class="hero-row">
-        <span class="hero-pct" id="heroPercent">0%</span>
-        <span class="hero-frac" id="heroFraction">0 / 0 ta</span>
+        <span class="hero-pct" id="heroTodayCount">0</span>
+        <span class="hero-frac">ta profilaktika</span>
       </div>
-      <div class="hero-track"><div class="hero-fill" id="heroFill" style="width:0%"></div></div>
     </div>
 
     <div class="mode-tabs">
@@ -618,6 +631,15 @@ body{
     <div id="dashContent"></div>
   </div>
 
+  <!-- BILDIRISHNOMALAR paneli -->
+  <div id="panelNotif" style="display:none">
+    <div class="xabarlar-toolbar">
+      <span style="font-size:13px;font-weight:700">Bildirishnomalar</span>
+      <button type="button" id="notifClearAll">Hammasini tozalash</button>
+    </div>
+    <div id="notifList"></div>
+  </div>
+
   <!-- PROFIL paneli -->
   <div id="panelProfile" style="display:none">
     <div class="profile-card">
@@ -625,19 +647,27 @@ body{
       <p class="profile-name" id="profileIsm">—</p>
       <p class="profile-login">Login: <b id="profileLogin">—</b></p>
     </div>
-    <div class="profile-card" style="margin-top:14px">
-      <p style="font-size:13.5px;font-weight:700;margin-bottom:14px">Parolni o'zgartirish</p>
-      <div class="field"><label>Joriy parol</label><input type="password" id="pwOld" autocomplete="current-password"></div>
-      <div class="field"><label>Yangi parol</label><input type="password" id="pwNew" autocomplete="new-password"></div>
-      <div class="field"><label>Yangi parolni tasdiqlang</label><input type="password" id="pwConfirm" autocomplete="new-password"></div>
-      <button class="btn" id="pwSaveBtn">Parolni saqlash</button>
+    <div class="profile-card" style="margin-top:14px;padding:0">
+      <button type="button" id="pwToggleRow" class="pw-toggle-row">
+        <span style="display:flex;align-items:center;gap:8px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          Parolni o'zgartirish
+        </span>
+        <svg id="pwToggleChevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:.2s"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+      <div id="pwFormWrap" style="display:none;padding:0 20px 20px">
+        <div class="field"><label>Joriy parol</label><input type="password" id="pwOld" autocomplete="current-password"></div>
+        <div class="field"><label>Yangi parol</label><input type="password" id="pwNew" autocomplete="new-password"></div>
+        <div class="field"><label>Yangi parolni tasdiqlang</label><input type="password" id="pwConfirm" autocomplete="new-password"></div>
+        <button class="btn" id="pwSaveBtn">Parolni saqlash</button>
+      </div>
     </div>
-    <button class="btn btn-secondary" id="logoutBtn" style="margin-top:14px;color:var(--danger)">Chiqish</button>
   </div>
 </div>
 
 <!-- ============ SUZUVCHI PASTKI NAVIGATSIYA ============ -->
-<div class="bottom-nav-wrap" id="bottomNavWrap">
+<!-- Faqat foydalanuvchi tizimga kirgandan keyin ko'rinadi (enterApp orqali) -->
+<div class="bottom-nav-wrap" id="bottomNavWrap" style="display:none">
   <button class="bnav-btn active" id="navAsosiy" title="Asosiy">
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
   </button>
@@ -648,8 +678,9 @@ body{
   <button class="bnav-btn" id="navStats" title="Statistika">
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
   </button>
-  <button class="bnav-btn" id="navProfile" title="Profil">
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+  <button class="bnav-btn" id="navBell" title="Bildirishnomalar">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="bnav-badge bnav-badge-danger" id="bellBadge" style="display:none">0</span>
   </button>
 </div>
 
@@ -805,6 +836,7 @@ async function doLogin(){
 function enterApp(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('bottomNavWrap').style.display = 'flex';
   document.getElementById('userName').textContent = currentUser.ism;
   document.getElementById('userAvatar').textContent = currentUser.ism.charAt(0).toUpperCase();
   // Ma'lumotlar allaqachon boshlang'ich yuklashda olingan (initApp orqali).
@@ -858,7 +890,7 @@ document.getElementById('topRefreshBtn').addEventListener('click', async (e)=>{
 function refreshActiveView(){
   if(navStats.classList.contains('active')) renderDashboard();
   else if(navDone.classList.contains('active')) handleDoneSearch(doneSearchInput.value.trim());
-  else if(navProfile.classList.contains('active')){ /* profil statik, yangilash shart emas */ }
+  else if(navBell.classList.contains('active')) loadNotifications();
   else if(tabOlt.classList.contains('active')) handleOltFilter();
   else handleSearch(searchInput.value.trim());
 }
@@ -930,15 +962,6 @@ function dismissNotification(idEnc){
 }
 window.dismissNotification = dismissNotification;
 
-document.getElementById('bellBtn').addEventListener('click', (e)=>{
-  e.stopPropagation();
-  document.getElementById('notifDropdown').classList.toggle('show');
-});
-document.addEventListener('click', (e)=>{
-  if(!e.target.closest('#notifDropdown') && !e.target.closest('#bellBtn')){
-    document.getElementById('notifDropdown').classList.remove('show');
-  }
-});
 document.getElementById('notifClearAll').addEventListener('click', ()=>{
   if(notifications.length === 0) return;
   const ids = notifications.map(n=>n.ID);
@@ -1093,22 +1116,27 @@ const panelOlt = document.getElementById('panelOlt');
 const panelDone = document.getElementById('panelDone');
 const panelDashboard = document.getElementById('panelDashboard');
 const panelProfile = document.getElementById('panelProfile');
+const panelNotif = document.getElementById('panelNotif');
 const resultsAreaEl = document.getElementById('resultsArea');
 
 const navAsosiy = document.getElementById('navAsosiy');
 const navDone = document.getElementById('navDone');
 const navStats = document.getElementById('navStats');
-const navProfile = document.getElementById('navProfile');
+const navBell = document.getElementById('navBell');
 const navDoneBadge = document.getElementById('navDoneBadge');
 
-// Pastki navigatsiyaning qaysi bo'limi faol ekanini boshqaradi.
+// Pastki navigatsiyaning qaysi bo'limi faol ekanini boshqaradi. "profile"
+// pastki navigatsiyada tugmaga ega emas (u yuqoridagi profil menyusi
+// orqali ochiladi), shu sabab bunday holatda hech qaysi tugma faollashmaydi.
 function showSection(name){
   sectionAsosiy.style.display = name === 'asosiy' ? 'block' : 'none';
   panelDone.style.display = name === 'done' ? 'block' : 'none';
   panelDashboard.style.display = name === 'dashboard' ? 'block' : 'none';
+  panelNotif.style.display = name === 'notif' ? 'block' : 'none';
   panelProfile.style.display = name === 'profile' ? 'block' : 'none';
-  [navAsosiy, navDone, navStats, navProfile].forEach(b => b.classList.remove('active'));
-  ({asosiy: navAsosiy, done: navDone, dashboard: navStats, profile: navProfile})[name].classList.add('active');
+  [navAsosiy, navDone, navStats, navBell].forEach(b => b.classList.remove('active'));
+  const map = { asosiy: navAsosiy, done: navDone, dashboard: navStats, notif: navBell };
+  if(map[name]) map[name].classList.add('active');
 }
 
 // "Asosiy" bo'lim ichida SERIA/OLT o'rtasidagi kichik toggle.
@@ -1132,12 +1160,17 @@ navStats.addEventListener('click', ()=>{
   showSection('dashboard');
   renderDashboard();
 });
-navProfile.addEventListener('click', ()=>{
+navBell.addEventListener('click', ()=>{
+  showSection('notif');
+  loadNotifications();
+});
+
+function openProfilePanel(){
   showSection('profile');
   document.getElementById('profileIsm').textContent = currentUser ? currentUser.ism : '—';
   document.getElementById('profileLogin').textContent = currentUser ? currentUser.login : '—';
   document.getElementById('profileAvatarBig').textContent = currentUser ? currentUser.ism.charAt(0).toUpperCase() : '?';
-});
+}
 
 tabSeria.addEventListener('click', ()=>{
   showInnerTab(panelSeria, tabSeria);
@@ -1153,19 +1186,41 @@ tabOlt.addEventListener('click', ()=>{
 });
 document.getElementById('dashRefresh').addEventListener('click', renderDashboard);
 
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
+// ============ TEPADAGI PROFIL TANLOVI (Profil / Chiqish) ============
+const profileMenu = document.getElementById('profileMenu');
+document.getElementById('profileChip').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  profileMenu.classList.toggle('show');
+});
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('#profileMenu') && !e.target.closest('#profileChip')){
+    profileMenu.classList.remove('show');
+  }
+});
+document.getElementById('profileMenuProfil').addEventListener('click', ()=>{
+  profileMenu.classList.remove('show');
+  openProfilePanel();
+});
+document.getElementById('profileMenuLogout').addEventListener('click', ()=>{
   localStorage.removeItem('profilaktika_user');
   location.reload();
 });
 
-// ============ HERO KARTOCHKA (umumiy bajarilish foizi) ============
+// Parolni o'zgartirish qatori — bosilganda forma ochiladi/yopiladi.
+document.getElementById('pwToggleRow').addEventListener('click', function(){
+  const wrap = document.getElementById('pwFormWrap');
+  const isOpen = wrap.style.display !== 'none';
+  wrap.style.display = isOpen ? 'none' : 'block';
+  this.classList.toggle('open', !isOpen);
+});
+
+// ============ HERO KARTOCHKA (bugungi bajarilgan ishlar soni) ============
 function updateHero(){
-  const total = devicesBuxoro.length + devicesKogon.length + devicesDone.length;
+  const todayStr = new Date().toLocaleDateString('uz-UZ', {day:'2-digit', month:'2-digit', year:'numeric'});
+  const todayCount = devicesDone.filter(d => (d.Sana||'').toString().trim() === todayStr).length;
+  document.getElementById('heroTodayCount').textContent = todayCount;
+
   const done = devicesDone.length;
-  const pct = total ? Math.round((done/total)*100) : 0;
-  document.getElementById('heroPercent').textContent = pct + '%';
-  document.getElementById('heroFraction').textContent = done + ' / ' + total + ' ta';
-  document.getElementById('heroFill').style.width = pct + '%';
   if(done > 0){ navDoneBadge.style.display = 'flex'; navDoneBadge.textContent = done > 99 ? '99+' : done; }
   else { navDoneBadge.style.display = 'none'; }
 }
@@ -1670,7 +1725,7 @@ function renderDashboard(){
         <div class="bar-row">
           <div class="bar-top">
             <span class="name">${escapeHtml(ism)}</span>
-            <span class="val">${rec.total} ta &nbsp;<span class="dash-tuman-pill">B: ${rec.buxoro}</span> <span class="dash-tuman-pill">K: ${rec.kogon}</span></span>
+            <span class="val">${rec.total} ta</span>
           </div>
           <div class="bar-track"><div class="bar-fill" style="width:${(rec.total/maxEmployeeCount*100)}%"></div></div>
         </div>`).join('') : `<div class="dash-empty">${filterActive ? "Shu filtr bo'yicha ma'lumot yo'q" : "Hali birorta profilaktika bajarilmagan"}</div>`}
