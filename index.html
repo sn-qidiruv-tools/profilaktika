@@ -779,10 +779,38 @@ function toast(msg, type='success'){
   window._toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
 }
 
+// TEZLASHTIRISH VA XAVFSIZLIK: har bir so'rov uchun cheklangan vaqt
+// (timeout) — server javob bermasa, so'rov abadiy osilib qolmaydi.
+function fetchWithTimeout_(url, options, timeoutMs){
+  const controller = new AbortController();
+  const timer = setTimeout(()=> controller.abort(), timeoutMs);
+  return fetch(url, Object.assign({}, options, { signal: controller.signal }))
+    .catch(err=>{
+      if(err.name === 'AbortError') throw new Error("Server javob bermadi (vaqt tugadi)");
+      throw err;
+    })
+    .finally(()=> clearTimeout(timer));
+}
+
+// MUSTAHKAMLIK: bu FAQAT o'qish (GET) so'rovi, hech narsani o'zgartirmaydi,
+// shuning uchun necha marta takrorlansa ham xavfsiz. Avval bitta urinish
+// bo'lardi — server vaqtincha band bo'lganda (bir nechta xodim bir vaqtda
+// kirganda) darhol "Ma'lumotlarni yuklab bo'lmadi" xatosi chiqib qolardi.
+// Endi 4 marta, orada kutish vaqti oshib boradi.
 async function fetchJson(url){
-  const resp = await fetch(url, { method: 'GET', cache: 'no-store' });
-  if(!resp.ok) throw new Error('HTTP ' + resp.status);
-  return await resp.json();
+  const delays = [0, 400, 1200, 2500];
+  let lastErr;
+  for(let i = 0; i < delays.length; i++){
+    if(delays[i]) await new Promise(r=>setTimeout(r, delays[i]));
+    try{
+      const resp = await fetchWithTimeout_(url, { method: 'GET', cache: 'no-store' }, 15000);
+      if(!resp.ok) throw new Error('HTTP ' + resp.status);
+      return await resp.json();
+    }catch(err){
+      lastErr = err;
+    }
+  }
+  throw lastErr;
 }
 
 function normalize(s){ return (s||'').toString().trim().toUpperCase(); }
@@ -820,6 +848,7 @@ async function doLogin(){
       currentUser = { ism: found.ISM, login: found.LOGIN };
       localStorage.setItem('profilaktika_user', JSON.stringify(currentUser));
       enterApp();
+      startSessionWatch();
     } else {
       errEl.textContent = "Login yoki parol noto'g'ri";
       errEl.classList.add('show');
@@ -855,20 +884,38 @@ function enterApp(){
 // hammasi birga keladi, shu sabab bu yerda alohida employees so'rovi shart
 // emas.
 async function initApp(){
-  try{
-    await loadDevices();
-  }catch(e){
-    // Xatolik bo'lsa ham foydalanuvchini kirishdan to'xtatmaymiz —
-    // login/qidiruv paytida qayta urinib ko'radi.
-  }
+  const ok = await loadDevices();
 
   document.getElementById('loadingScreen').style.display = 'none';
+
+  if(!ok){
+    // MUHIM: 4 marta urinishdan keyin ham yuklanmasa (masalan internet
+    // butunlay yo'q), foydalanuvchi bo'sh/abadiy "yuklanmoqda" holatida
+    // qolib ketmasligi uchun aniq xabar va "Qayta urinish" tugmasi ko'rsatiladi.
+    const ls = document.getElementById('loadingScreen');
+    ls.innerHTML = `
+      <div class="loading-text" style="text-align:center;max-width:260px">Ma'lumotlarni yuklab bo'lmadi.<br>Internetni tekshirib, qayta urining.</div>
+      <button class="btn" style="width:auto;padding:11px 22px" onclick="location.reload()">↻ Qayta urinish</button>
+    `;
+    ls.style.display = 'flex';
+    return;
+  }
 
   const saved = localStorage.getItem('profilaktika_user');
   if(saved){
     try{
       currentUser = JSON.parse(saved);
+      // MUHIM: saqlangan sessiya ENG YANGI (hozirgina bootstrap orqali
+      // yuklangan) xodimlar ro'yxati bilan tekshiriladi. Agar admin bu
+      // login/parolni Login varag'idan o'chirgan bo'lsa (ishdan bo'shatilgan
+      // xodim), eski sessiya localStorage'da saqlanib qolgan bo'lsa ham,
+      // ilova uni AVTOMATIK chiqarib yuboradi.
+      if(!syncCurrentUserWithEmployees()){
+        forceLogout("Sizning hisobingiz o'chirilgan yoki o'zgartirilgan. Administrator bilan bog'laning.");
+        return;
+      }
       enterApp();
+      startSessionWatch();
       return;
     }catch(e){}
   }
@@ -876,13 +923,75 @@ async function initApp(){
 }
 initApp();
 
+// Joriy foydalanuvchini ENG YANGI employees ro'yxati bilan solishtiradi.
+// Login topilmasa false qaytaradi (chiqarib yuborish kerak). Topilsa —
+// ism o'zgargan bo'lishi mumkin, shu holatda currentUser va localStorage
+// yangilanadi.
+function syncCurrentUserWithEmployees(){
+  const found = employees.find(e => normalize(e.LOGIN) === normalize(currentUser.login));
+  if(!found) return false;
+  const freshUser = { ism: found.ISM, login: found.LOGIN };
+  const changed = JSON.stringify(freshUser) !== JSON.stringify(currentUser);
+  currentUser = freshUser;
+  if(changed){
+    localStorage.setItem('profilaktika_user', JSON.stringify(currentUser));
+    if(document.getElementById('appScreen').style.display !== 'none'){
+      document.getElementById('userName').textContent = currentUser.ism;
+      document.getElementById('userAvatar').textContent = currentUser.ism.charAt(0).toUpperCase();
+    }
+  }
+  return true;
+}
+
+// Sessiyani majburan tugatadi — hisob o'chirilgan/o'zgartirilgan holatlar uchun.
+function forceLogout(message){
+  stopSessionWatch();
+  localStorage.removeItem('profilaktika_user');
+  currentUser = null;
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('bottomNavWrap').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginInput').value = '';
+  document.getElementById('passInput').value = '';
+  if(message){
+    const errEl = document.getElementById('loginError');
+    errEl.textContent = message;
+    errEl.classList.add('show');
+  }
+}
+
+// Ochiq (allaqachon kirilgan) sessiyalar uchun ham davriy tekshiruv —
+// admin xodimni Login varag'idan o'chirgan zahoti, xodim brauzerini
+// yopmasa ham, bir necha soniya ichida avtomatik chiqarib yuboriladi.
+let sessionWatchIntervalId = null;
+function startSessionWatch(){
+  stopSessionWatch();
+  sessionWatchIntervalId = setInterval(async ()=>{
+    if(!currentUser) return;
+    const ok = await loadDevices();
+    if(!ok) return; // tarmoq xatosi — sessiyani bekor qilmaymiz
+    if(!syncCurrentUserWithEmployees()){
+      forceLogout("Sizning hisobingiz o'chirilgan yoki o'zgartirilgan. Administrator bilan bog'laning.");
+      return;
+    }
+    refreshActiveView();
+  }, 45000);
+}
+function stopSessionWatch(){
+  if(sessionWatchIntervalId != null){ clearInterval(sessionWatchIntervalId); sessionWatchIntervalId = null; }
+}
+
 document.getElementById('topRefreshBtn').addEventListener('click', async (e)=>{
   const btn = e.currentTarget;
   btn.style.transition = 'transform .6s';
   btn.style.transform = 'rotate(360deg)';
-  await loadDevices();
+  const ok = await loadDevices();
   setTimeout(()=>{ btn.style.transition='none'; btn.style.transform='rotate(0deg)'; }, 600);
-  toast("Ma'lumotlar yangilandi", 'success');
+  if(ok && currentUser && !syncCurrentUserWithEmployees()){
+    forceLogout("Sizning hisobingiz o'chirilgan yoki o'zgartirilgan. Administrator bilan bog'laning.");
+    return;
+  }
+  if(ok) toast("Ma'lumotlar yangilandi", 'success');
   refreshActiveView();
 });
 
@@ -913,8 +1022,10 @@ async function loadDevices(){
     devicesDone = (data.completed || []).map((r,i) => ({...r, _tuman: (r.Tuman||'').toString().trim(), _done:true, _sortKey:i}));
     updateHero();
     if(data.employees && data.employees.length) employees = data.employees;
+    return true;
   }catch(err){
     toast("Ma'lumotlarni yuklab bo'lmadi", 'error');
+    return false;
   }
 }
 
@@ -1202,6 +1313,7 @@ document.getElementById('profileMenuProfil').addEventListener('click', ()=>{
   openProfilePanel();
 });
 document.getElementById('profileMenuLogout').addEventListener('click', ()=>{
+  stopSessionWatch();
   localStorage.removeItem('profilaktika_user');
   location.reload();
 });
