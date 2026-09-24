@@ -488,6 +488,32 @@ body{
 }
 .profile-menu button:hover{background:var(--bg-elev-2)}
 #profileMenuLogout{color:var(--danger)}
+
+/* ===== Joylashuv (xarita) tanlash ===== */
+.loc-btn{
+  width:100%;background:var(--bg-elev-2);border:1.5px dashed var(--border-strong);border-radius:12px;
+  padding:12px;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;
+}
+.loc-btn.picked{border-style:solid;border-color:#22C55E;color:#15803D;background:#ECFDF5}
+.map-modal{
+  background:var(--bg-elev);border:1px solid var(--border);border-radius:20px 20px 0 0;
+  width:100%;max-width:440px;padding:16px;max-height:90vh;display:flex;flex-direction:column;gap:12px;
+}
+@media(min-width:640px){.map-modal{border-radius:20px}}
+#leafletMap{width:100%;height:340px;border-radius:14px;overflow:hidden;background:var(--bg-elev-2)}
+.locate-me-btn{
+  position:absolute;bottom:12px;right:12px;z-index:1000;width:38px;height:38px;border-radius:10px;
+  background:#ffffff;border:1px solid var(--border);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(20,30,60,.22);
+}
+.locate-me-btn:active{transform:scale(.94)}
+.locate-me-btn.loading{color:var(--text-dim)}
+.my-location-dot{width:16px;height:16px;border-radius:50%;background:var(--accent);border:3px solid #ffffff;box-shadow:0 0 0 2px rgba(108,92,231,.5), 0 2px 6px rgba(20,30,60,.3)}
+.map-hint{font-size:12px;color:var(--text-dim);text-align:center}
+.map-accuracy-warn{font-size:11.5px;font-weight:700;text-align:center;color:var(--warn);padding:6px 10px;background:rgba(217,119,6,.12);border-radius:9px}
+.map-accuracy-ok{font-size:11.5px;font-weight:700;text-align:center;color:#15803D;padding:6px 10px;background:rgba(34,197,94,.1);border-radius:9px}
+.map-coords{font-family:'SF Mono',Consolas,monospace;font-size:12.5px;text-align:center;color:var(--accent)}
 </style>
 </head>
 
@@ -688,7 +714,7 @@ body{
 <div class="overlay" id="modalOverlay">
   <div class="modal">
     <h2>Profilaktika qilindi</h2>
-    <p class="sub">Rasm yuklang va tasdiqlang</p>
+    <p class="sub">Rasm va joylashuvni belgilab tasdiqlang</p>
     <div class="modal-device" id="modalDeviceInfo"></div>
 
     <div class="photo-grid">
@@ -714,9 +740,34 @@ body{
       </div>
     </div>
 
+    <div class="field">
+      <label>Joylashuv <span style="color:var(--danger)">*</span></label>
+      <button type="button" class="loc-btn" id="locBtn">📍 Joylashuvni belgilash</button>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-secondary" id="modalCancel">Bekor qilish</button>
       <button class="action-btn" id="modalConfirm" disabled>Tasdiqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ XARITA (JOYLASHUV) MODAL ============ -->
+<div class="overlay" id="mapOverlay">
+  <div class="map-modal">
+    <h2 style="margin:0">Joylashuvni tanlang</h2>
+    <p class="map-hint">Xarita GPS orqali taxminiy joyni ko'rsatadi — belgini (📍) surib yoki xaritaga bosib aniq nuqtani ko'rsating.</p>
+    <div style="position:relative">
+      <div id="leafletMap"></div>
+      <button type="button" class="locate-me-btn" id="locateMeBtn" title="Mening joylashuvim">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      </button>
+    </div>
+    <div class="map-coords" id="mapCoordsText">Aniqlanmoqda...</div>
+    <div class="map-accuracy-warn" id="mapAccuracyWarn" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="mapCancel">Bekor qilish</button>
+      <button class="btn" id="mapConfirm">Joylashuvni tasdiqlash</button>
     </div>
   </div>
 </div>
@@ -1228,7 +1279,8 @@ function renderResults(matches){
         <div class="info-row"><span class="k">Bo'sh port</span><span class="v">${escapeHtml(d["bo'sh port"] ?? d["bo'sh port "] ?? '—')}</span></div>
       </div>
       ${isDone
-        ? `<div class="status-done"><span class="ic">✅</span><div><b>Profilaktika bajarilgan</b><span>${escapeHtml(holatText)}</span></div></div>`
+        ? `<div class="status-done"><span class="ic">✅</span><div><b>Profilaktika bajarilgan</b><span>${escapeHtml(holatText)}</span></div></div>
+           ${d.LOKATSIYA ? `<a class="btn btn-secondary" style="margin-top:10px;display:block;text-align:center;text-decoration:none" target="_blank" href="https://www.google.com/maps?q=${encodeURIComponent(d.LOKATSIYA)}">🗺 Xaritadan ko'rish</a>` : ''}`
         : `<button class="action-btn" onclick="openModal(${JSON.stringify(d).replace(/"/g,'&quot;')})">
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>
              Profilaktika qilindi deb belgilash
@@ -1394,6 +1446,7 @@ function handleDoneSearch(query){
         <div class="result-sub">${escapeHtml(d.OLT||'')} &nbsp;·&nbsp; ${escapeHtml(d.MANZIL||'')} &nbsp;·&nbsp; ${d._tuman==='buxoro'?'Buxoro':'Kogon'}</div>
       </div>
       <div class="status-done"><span class="ic">✅</span><div><b>Profilaktika bajarilgan</b><span>${escapeHtml((d.Sana||'') + ', ' + (d.Xodim||''))}</span></div></div>
+      ${d.LOKATSIYA ? `<a class="btn btn-secondary" style="margin-top:10px;display:block;text-align:center;text-decoration:none" target="_blank" href="https://www.google.com/maps?q=${encodeURIComponent(d.LOKATSIYA)}">🗺 Xaritadan ko'rish</a>` : ''}
       ${admin ? `<button class="btn btn-secondary" style="margin-top:10px;color:var(--danger);border-color:#FCA5A5" onclick="openBekorModal('${encodeURIComponent(d.SERIA)}')">↩️ Bekor qilish</button>` : ''}
     </div>`).join('');
 }
@@ -1581,7 +1634,7 @@ const photoSlots = {
 };
 
 function updateConfirmState(){
-  modalConfirm.disabled = !(selectedFileBefore && selectedFileAfter);
+  modalConfirm.disabled = !(selectedFileBefore && selectedFileAfter && pickedLatLng);
 }
 
 // Rasmni yuborishdan oldin kichraytirish/siqish — bu yuklash tezligini
@@ -1668,6 +1721,7 @@ function openModal(device){
     `S/N: <b>${escapeHtml(device.SERIA)}</b> &nbsp;·&nbsp; ${escapeHtml(device.OLT||'')}<br>${escapeHtml(device.MANZIL||'')}`;
   resetPhotoSlot('before');
   resetPhotoSlot('after');
+  resetLocation();
   modalConfirm.textContent = 'Tasdiqlash';
   overlay.classList.add('show');
 }
@@ -1678,12 +1732,14 @@ function closeModal(){ overlay.classList.remove('show'); }
 
 modalConfirm.addEventListener('click', ()=>{
   if(!selectedFileBefore || !selectedFileAfter || !activeDevice) return;
+  if(!pickedLatLng){ toast("Joylashuvni xaritadan belgilang", 'error'); return; }
 
   const device = activeDevice;
   const base64Before = selectedFileBefore;
   const base64After = selectedFileAfter;
   const sana = new Date().toLocaleDateString('uz-UZ', {day:'2-digit', month:'2-digit', year:'numeric'});
   const ism = currentUser.ism;
+  const lokatsiya = pickedLatLng.lat.toFixed(6) + ', ' + pickedLatLng.lng.toFixed(6);
 
   // === DARHOL (bloklamasdan) ekranni yangilaymiz ===
   // Xodim rasm/ma'lumot yuborilishini kutib turmasin — u zahoti boshqa
@@ -1697,7 +1753,7 @@ modalConfirm.addEventListener('click', ()=>{
   const list = device._tuman === 'buxoro' ? devicesBuxoro : devicesKogon;
   const idx = list.findIndex(d => d.SERIA === device.SERIA);
   if(idx > -1){ list.splice(idx, 1); }
-  devicesDone.unshift({ ...device, Sana: sana, Xodim: ism, _done:true, _sortKey: Date.now() });
+  devicesDone.unshift({ ...device, Sana: sana, Xodim: ism, LOKATSIYA: lokatsiya, _done:true, _sortKey: Date.now() });
   updateHero();
   handleSearch(searchInput.value.trim());
 
@@ -1710,7 +1766,8 @@ modalConfirm.addEventListener('click', ()=>{
     tuman: device._tuman,
     image: base64After,
     image_oldin: base64Before,
-    image_hozir: base64After
+    image_hozir: base64After,
+    lokatsiya: lokatsiya
   };
 
   // Google Apps Script javobini o'qishda ko'pincha CORS bilan bog'liq
@@ -1745,6 +1802,229 @@ function fileToBase64(file){
     reader.readAsDataURL(file);
   });
 }
+
+// ============ JOYLASHUV (XARITA) ============
+// Sklad ilovasidagi bilan bir xil mantiq: GPS bir necha soniya davomida
+// kuzatiladi (watchPosition), aniqlik doirasi ko'rsatiladi, aniqlik yomon
+// bo'lsa ("> 30 metr) ogohlantirish chiqadi, xodim belgini qo'lda ham
+// surishi/tekshirishi mumkin. "Joylashuvni tasdiqlash" tugmasi aniq joy
+// topilmaguncha yoki xodim belgini qo'lda to'g'irlamaguncha faol emas.
+let leafletMapInstance = null, leafletMarker = null, pickedLatLng = null, myLocationMarker = null;
+let geoWatchId = null, accuracyCircle = null, userAdjustedMarker = false, currentAccuracy = null;
+const mapOverlay = document.getElementById('mapOverlay');
+const locBtn = document.getElementById('locBtn');
+const locateMeBtn = document.getElementById('locateMeBtn');
+const mapConfirmBtn = document.getElementById('mapConfirm');
+const DEFAULT_CENTER = [39.7747, 64.4286]; // Buxoro atrofi (boshlang'ich markaz)
+const ACCURACY_WARN_METERS = 30;
+
+function updateMapConfirmState(){
+  const accurateEnough = currentAccuracy != null && currentAccuracy <= ACCURACY_WARN_METERS;
+  const ready = userAdjustedMarker || accurateEnough;
+  mapConfirmBtn.disabled = !ready;
+  mapConfirmBtn.textContent = ready ? 'Joylashuvni tasdiqlash' : '⏳ Aniq joy kutilmoqda...';
+}
+
+function resetLocation(){
+  pickedLatLng = null;
+  userAdjustedMarker = false;
+  currentAccuracy = null;
+  locBtn.textContent = '📍 Joylashuvni belgilash';
+  locBtn.classList.remove('picked');
+  clearAccuracyWatch();
+  if(accuracyCircle){ accuracyCircle.remove(); accuracyCircle = null; }
+  document.getElementById('mapAccuracyWarn').style.display = 'none';
+  updateMapConfirmState();
+  updateConfirmState();
+}
+
+function updateCoordsText(lat, lng, accuracy){
+  let txt = lat.toFixed(6) + ', ' + lng.toFixed(6);
+  if(accuracy != null){ txt += '  ·  aniqlik ±' + Math.round(accuracy) + ' m'; currentAccuracy = accuracy; }
+  document.getElementById('mapCoordsText').textContent = txt;
+
+  const warnEl = document.getElementById('mapAccuracyWarn');
+  if(accuracy != null && !userAdjustedMarker){
+    if(accuracy > ACCURACY_WARN_METERS){
+      warnEl.className = 'map-accuracy-warn';
+      warnEl.textContent = "⚠️ GPS aniqligi past (±" + Math.round(accuracy) + " m) — belgini (📍) qo'lda aniq joyga suring";
+      warnEl.style.display = 'block';
+    } else {
+      warnEl.className = 'map-accuracy-ok';
+      warnEl.textContent = "✓ Aniqlik yetarli — kerak bo'lsa baribir belgini tekshiring";
+      warnEl.style.display = 'block';
+    }
+  } else if(userAdjustedMarker){
+    warnEl.style.display = 'none';
+  }
+  updateMapConfirmState();
+}
+
+function startAccuracyWatch(){
+  if(!navigator.geolocation) return;
+  clearAccuracyWatch();
+  document.getElementById('mapCoordsText').textContent = 'GPS orqali aniqlanmoqda...';
+  geoWatchId = navigator.geolocation.watchPosition(
+    (pos)=>{
+      const c = [pos.coords.latitude, pos.coords.longitude];
+      const acc = pos.coords.accuracy;
+      updateAccuracyCircle(c, acc);
+      showMyLocationDot(c);
+      if(!userAdjustedMarker){
+        leafletMarker.setLatLng(c);
+        const curZoom = leafletMapInstance.getZoom();
+        leafletMapInstance.setView(c, curZoom < 17 ? 17 : curZoom);
+        updateCoordsText(c[0], c[1], acc);
+      }
+    },
+    (err)=>{
+      if(!userAdjustedMarker){
+        document.getElementById('mapCoordsText').textContent = leafletMarker.getLatLng().lat.toFixed(6) + ', ' + leafletMarker.getLatLng().lng.toFixed(6);
+        const warnEl = document.getElementById('mapAccuracyWarn');
+        warnEl.className = 'map-accuracy-warn';
+        warnEl.textContent = "⚠️ GPS orqali joy aniqlanmadi — xaritaga bosib yoki belgini (📍) surib, aniq joyni o'zingiz ko'rsating";
+        warnEl.style.display = 'block';
+      }
+    },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+  );
+  setTimeout(clearAccuracyWatch, 18000);
+}
+
+function clearAccuracyWatch(){
+  if(geoWatchId != null){
+    navigator.geolocation.clearWatch(geoWatchId);
+    geoWatchId = null;
+  }
+}
+
+function updateAccuracyCircle(latlng, accuracy){
+  if(!leafletMapInstance) return;
+  if(accuracyCircle){
+    accuracyCircle.setLatLng(latlng);
+    accuracyCircle.setRadius(accuracy);
+  } else {
+    accuracyCircle = L.circle(latlng, {
+      radius: accuracy, color: '#6C5CE7', weight: 1.5,
+      fillColor: '#6C5CE7', fillOpacity: 0.12
+    }).addTo(leafletMapInstance);
+  }
+}
+
+function markUserAdjusted(){
+  userAdjustedMarker = true;
+  clearAccuracyWatch();
+  if(accuracyCircle){ accuracyCircle.remove(); accuracyCircle = null; }
+  document.getElementById('mapAccuracyWarn').style.display = 'none';
+  updateMapConfirmState();
+}
+
+let leafletLoadPromise = null;
+function ensureLeafletLoaded(){
+  if(window.L) return Promise.resolve();
+  if(leafletLoadPromise) return leafletLoadPromise;
+  leafletLoadPromise = new Promise((resolve, reject)=>{
+    const cssLink = document.createElement('link');
+    cssLink.rel = 'stylesheet';
+    cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(cssLink);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Xarita kutubxonasini yuklab bo'lmadi. Internetni tekshiring."));
+    document.head.appendChild(script);
+  });
+  return leafletLoadPromise;
+}
+
+function openMapPicker(){
+  mapOverlay.classList.add('show');
+  document.getElementById('mapCoordsText').textContent = 'Xarita yuklanmoqda...';
+  if(!pickedLatLng) updateMapConfirmState();
+  ensureLeafletLoaded().then(initLeafletMap).catch(err=>{
+    toast(err.message, 'error');
+    mapOverlay.classList.remove('show');
+  });
+}
+
+function initLeafletMap(){
+  setTimeout(()=>{
+    const startCenter = pickedLatLng ? [pickedLatLng.lat, pickedLatLng.lng] : DEFAULT_CENTER;
+    if(!leafletMapInstance){
+      leafletMapInstance = L.map('leafletMap').setView(startCenter, 15);
+      const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '© OpenStreetMap'
+      }).addTo(leafletMapInstance);
+      const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19, attribution: 'Tiles © Esri'
+      });
+      L.control.layers({ '🗺️ Xarita': streetLayer, '🛰️ Sputnik': satelliteLayer }, null, { position: 'topright', collapsed: false }).addTo(leafletMapInstance);
+      L.control.scale({ position: 'bottomleft', metric: true, imperial: false }).addTo(leafletMapInstance);
+      leafletMarker = L.marker(startCenter, { draggable: true }).addTo(leafletMapInstance);
+      leafletMarker.on('dragend', ()=>{
+        const p = leafletMarker.getLatLng();
+        markUserAdjusted();
+        updateCoordsText(p.lat, p.lng);
+      });
+      leafletMapInstance.on('click', (e)=>{
+        leafletMarker.setLatLng(e.latlng);
+        markUserAdjusted();
+        updateCoordsText(e.latlng.lat, e.latlng.lng);
+      });
+    } else {
+      leafletMapInstance.invalidateSize();
+      leafletMapInstance.setView(startCenter, 15);
+      leafletMarker.setLatLng(startCenter);
+    }
+    updateCoordsText(startCenter[0], startCenter[1]);
+
+    if(!pickedLatLng){
+      startAccuracyWatch();
+    }
+  }, 50);
+}
+
+function showMyLocationDot(latlng){
+  if(!leafletMapInstance) return;
+  const icon = L.divIcon({ className: 'my-location-dot', iconSize: [16,16] });
+  if(myLocationMarker){
+    myLocationMarker.setLatLng(latlng);
+  } else {
+    myLocationMarker = L.marker(latlng, { icon, interactive: false, zIndexOffset: 1000 }).addTo(leafletMapInstance);
+  }
+}
+
+function locateMe(){
+  if(!navigator.geolocation){ toast('Brauzeringiz joylashuvni aniqlay olmaydi', 'error'); return; }
+  locateMeBtn.classList.add('loading');
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      const c = [pos.coords.latitude, pos.coords.longitude];
+      leafletMapInstance.setView(c, 17);
+      showMyLocationDot(c);
+      locateMeBtn.classList.remove('loading');
+    },
+    ()=>{
+      toast("Joylashuvni aniqlab bo'lmadi — GPS ruxsatini tekshiring", 'error');
+      locateMeBtn.classList.remove('loading');
+    },
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+}
+locateMeBtn.addEventListener('click', locateMe);
+
+locBtn.addEventListener('click', openMapPicker);
+document.getElementById('mapCancel').addEventListener('click', ()=> mapOverlay.classList.remove('show'));
+mapOverlay.addEventListener('click', e=>{ if(e.target===mapOverlay) mapOverlay.classList.remove('show'); });
+document.getElementById('mapConfirm').addEventListener('click', ()=>{
+  const p = leafletMarker.getLatLng();
+  pickedLatLng = { lat: p.lat, lng: p.lng };
+  locBtn.textContent = '✓ ' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5);
+  locBtn.classList.add('picked');
+  mapOverlay.classList.remove('show');
+  updateConfirmState();
+});
 
 // ============ DASHBOARD ============
 function getHolat(d){ return d._done ? true : false; }
