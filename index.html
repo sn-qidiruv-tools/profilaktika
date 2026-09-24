@@ -793,17 +793,21 @@ function fetchWithTimeout_(url, options, timeoutMs){
 }
 
 // MUSTAHKAMLIK: bu FAQAT o'qish (GET) so'rovi, hech narsani o'zgartirmaydi,
-// shuning uchun necha marta takrorlansa ham xavfsiz. Avval bitta urinish
-// bo'lardi — server vaqtincha band bo'lganda (bir nechta xodim bir vaqtda
-// kirganda) darhol "Ma'lumotlarni yuklab bo'lmadi" xatosi chiqib qolardi.
-// Endi 4 marta, orada kutish vaqti oshib boradi.
+// shuning uchun necha marta takrorlansa ham xavfsiz.
+// TEZLASHTIRISH (YANGILANDI): avval 4 marta urinish bo'lgan, har birida
+// 15 soniyagacha kutish bilan — bu degani server band bo'lganda foydalanuvchi
+// XATONI KO'RGUNCHA 60+ soniya kutishi mumkin edi, bu esa "qotib qoldi"
+// taassurotini kuchaytirar edi. Endi: atigi 3 ta urinish, har birining
+// timeout'i 8 soniya, va orada kutish vaqtlari qisqaroq — eng yomon holatda
+// ham foydalanuvchi taxminan 20 soniyada aniq xato yoki natija ko'radi.
 async function fetchJson(url){
-  const delays = [0, 400, 1200, 2500];
+  const delays = [0, 500, 1500];
+  const timeoutMs = 8000;
   let lastErr;
   for(let i = 0; i < delays.length; i++){
     if(delays[i]) await new Promise(r=>setTimeout(r, delays[i]));
     try{
-      const resp = await fetchWithTimeout_(url, { method: 'GET', cache: 'no-store' }, 15000);
+      const resp = await fetchWithTimeout_(url, { method: 'GET', cache: 'no-store' }, timeoutMs);
       if(!resp.ok) throw new Error('HTTP ' + resp.status);
       return await resp.json();
     }catch(err){
@@ -889,7 +893,7 @@ async function initApp(){
   document.getElementById('loadingScreen').style.display = 'none';
 
   if(!ok){
-    // MUHIM: 4 marta urinishdan keyin ham yuklanmasa (masalan internet
+    // MUHIM: 3 marta urinishdan keyin ham yuklanmasa (masalan internet
     // butunlay yo'q), foydalanuvchi bo'sh/abadiy "yuklanmoqda" holatida
     // qolib ketmasligi uchun aniq xabar va "Qayta urinish" tugmasi ko'rsatiladi.
     const ls = document.getElementById('loadingScreen');
@@ -962,8 +966,16 @@ function forceLogout(message){
 
 // Ochiq (allaqachon kirilgan) sessiyalar uchun ham davriy tekshiruv —
 // admin xodimni Login varag'idan o'chirgan zahoti, xodim brauzerini
-// yopmasa ham, bir necha soniya ichida avtomatik chiqarib yuboriladi.
+// yopmasa ham, ma'lum vaqt ichida avtomatik chiqarib yuboriladi.
+// TEZLASHTIRISH (YANGILANDI): avval bu interval 45 soniya edi — 10-15
+// xodim bir vaqtda ishlaganda, bu degani serverga taxminan har 3
+// soniyada bitta og'ir "bootstrap" so'rovi tushar edi (butun jadvalni
+// qayta o'qish), garchi bu tekshiruv shoshilinch bo'lmasa ham (faqat
+// hisob o'chirilgan-o'chirilmaganini bilish uchun). Endi interval 3
+// daqiqaga oshirildi — bu ham serverga tushadigan yukni sezilarli
+// kamaytiradi, ham hisobni o'chirish holatini yetarlicha tez aniqlaydi.
 let sessionWatchIntervalId = null;
+const SESSION_WATCH_MS = 180000; // 3 daqiqa
 function startSessionWatch(){
   stopSessionWatch();
   sessionWatchIntervalId = setInterval(async ()=>{
@@ -975,18 +987,26 @@ function startSessionWatch(){
       return;
     }
     refreshActiveView();
-  }, 45000);
+  }, SESSION_WATCH_MS);
 }
 function stopSessionWatch(){
   if(sessionWatchIntervalId != null){ clearInterval(sessionWatchIntervalId); sessionWatchIntervalId = null; }
 }
 
+// TEZLASHTIRISH: qo'lda "yangilash" tugmasi bosilganda, agar oldingi
+// so'rov hali tugamagan bo'lsa, ustma-ust so'rov yubormaymiz — bu
+// serverga keraksiz qo'shimcha yuk bermaydi va tugmani bir necha marta
+// tez-tez bosib yuborilishining oldini oladi.
+let refreshInFlight = false;
 document.getElementById('topRefreshBtn').addEventListener('click', async (e)=>{
+  if(refreshInFlight) return;
+  refreshInFlight = true;
   const btn = e.currentTarget;
   btn.style.transition = 'transform .6s';
   btn.style.transform = 'rotate(360deg)';
   const ok = await loadDevices();
   setTimeout(()=>{ btn.style.transition='none'; btn.style.transform='rotate(0deg)'; }, 600);
+  refreshInFlight = false;
   if(ok && currentUser && !syncCurrentUserWithEmployees()){
     forceLogout("Sizning hisobingiz o'chirilgan yoki o'zgartirilgan. Administrator bilan bog'laning.");
     return;
@@ -1696,6 +1716,11 @@ modalConfirm.addEventListener('click', ()=>{
   // Google Apps Script javobini o'qishda ko'pincha CORS bilan bog'liq
   // muammo chiqadi (garchi so'rov serverda muvaffaqiyatli bajarilsa ham).
   // Shu sabab 'no-cors' rejimida yuboramiz va javobni o'qishga urinmaymiz.
+  // MUHIM: bu so'rov backend'da darhol qatorni "band" deb belgilab
+  // (LockService yordamida) qulflaydi va faqat undan keyin Telegram'ga
+  // yuboradi — shu sabab bir nechta xodim tasodifan bir xil qurilmani
+  // deyarli bir vaqtda belgilashga urinsa ham, ikkinchisi aniq xato
+  // xabarini oladi (backend tomonda himoyalangan).
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
